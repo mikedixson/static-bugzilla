@@ -22,7 +22,7 @@ my $bugzilla_attachments_url = 'https://bugzilla-attachments.icculus.org';  # th
 sub attachment_head_response {
     my ($url) = @_;
     my $curlfh;
-    if (not open($curlfh, '-|', 'curl', '-I', '-L', '-s', '-S', '-D', '-', '-o', '/dev/null', $url)) {
+    if (not open($curlfh, '-|', 'curl', '-I', '-L', '-s', '-S', '-o', '/dev/null', $url)) {
         warn("curl HEAD invocation failed for '$url': $!\n");
         return;
     }
