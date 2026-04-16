@@ -26,13 +26,17 @@ function sanitize_header_value($value) {
     return $value;
 }
 
+function header_token_pattern() {
+    return "[A-Za-z0-9!#$%&'*+.^_`|~-]+";
+}
+
 function is_valid_content_type($value) {
-    $token = "[A-Za-z0-9!#$%&'*+.^_`|~-]+";
+    $token = header_token_pattern();
     return preg_match('/\A' . $token . '\/' . $token . '(?:\s*;\s*' . $token . '=(?:' . $token . '|"[^"]*"))*\z/', $value) === 1;
 }
 
 function is_valid_content_disposition($value) {
-    $token = "[A-Za-z0-9!#$%&'*+.^_`|~-]+";
+    $token = header_token_pattern();
     return preg_match('/\A(?:inline|attachment)(?:\s*;\s*' . $token . '=(?:' . $token . '|"[^"]*"))*\z/i', $value) === 1;
 }
 
@@ -60,12 +64,12 @@ if (file_exists("$path/content-type")) {
 }
 
 $content_disposition = sanitize_header_value($content_disposition);
-if (($content_disposition === false) || (!is_valid_content_disposition($content_disposition))) {
+if ($content_disposition === false || !is_valid_content_disposition($content_disposition)) {
     $content_disposition = 'attachment';
 }
 
 $content_type = sanitize_header_value($content_type);
-if (($content_type === false) || (!is_valid_content_type($content_type))) {
+if ($content_type === false || !is_valid_content_type($content_type)) {
     $content_type = 'application/octet-stream';
 }
 
