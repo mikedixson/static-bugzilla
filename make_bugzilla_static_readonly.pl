@@ -68,13 +68,21 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
     }
 
     system("mkdir -p '$dir'") == 0 or die("Failed to mkdir -p '$dir'");
-    open(FH, '>', "$dir/content-disposition") or die("Failed to open '$dir/content-disposition': $!"); print FH $response->{'content-disposition'} // ''; close(FH);
-    open(FH, '>', "$dir/content-type") or die("Failed to open '$dir/content-type': $!"); print FH $response->{'content-type'} // ''; close(FH);
-    if (system("curl -f -L -s -S -o 'data-in-progress' '$url'") != 0) {
+    open(FH, '>', "$dir/content-disposition") or die("Failed to open '$dir/content-disposition': $!");
+    print FH $response->{'content-disposition'} // '';
+    close(FH);
+
+    open(FH, '>', "$dir/content-type") or die("Failed to open '$dir/content-type': $!");
+    print FH $response->{'content-type'} // '';
+    close(FH);
+
+    my $downloadtmp = "$dir/data-in-progress";
+    if (system("curl -f -L -s -S -o '$downloadtmp' '$url'") != 0) {
+        unlink($downloadtmp) if -f $downloadtmp;
         warn(" - Skipping attachment $i: attachment download failed\n");
         next;
     }
-    system("mv 'data-in-progress' '$dir/data'");
+    system("mv '$downloadtmp' '$dir/data'");
 }
 print("Attachments are all collected!\n\n");
 
