@@ -21,8 +21,10 @@ my $bugzilla_attachments_url = 'https://bugzilla-attachments.icculus.org';  # th
 
 sub attachment_head_response {
     my ($url) = @_;
-    my @curlhead = split /\n/, `curl -I -L -s -S -D - -o /dev/null "$url"`;
-    return if ($? != 0) || (not @curlhead);
+    open(my $curlfh, '-|', 'curl', '-I', '-L', '-s', '-S', '-D', '-', '-o', '/dev/null', $url) or return;
+    my @curlhead = <$curlfh>;
+    my $curlok = close($curlfh);
+    return if (not $curlok) || (not @curlhead);
 
     my $status = undef;
     my $statusline = undef;
@@ -77,7 +79,7 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
     close(FH);
 
     my $downloadtmp = "$dir/data-in-progress";
-    if (system("curl -f -L -s -S -o '$downloadtmp' '$url'") != 0) {
+    if (system('curl', '-f', '-L', '-s', '-S', '-o', $downloadtmp, $url) != 0) {
         unlink($downloadtmp) if -f $downloadtmp;
         warn(" - Skipping attachment $i: attachment download failed\n");
         next;
