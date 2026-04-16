@@ -21,10 +21,19 @@ my $bugzilla_attachments_url = 'https://bugzilla-attachments.icculus.org';  # th
 
 sub attachment_head_response {
     my ($url) = @_;
-    open(my $curlfh, '-|', 'curl', '-I', '-L', '-s', '-S', '-D', '-', '-o', '/dev/null', $url) or return;
+    my $curlfh;
+    if (not open($curlfh, '-|', 'curl', '-I', '-L', '-s', '-S', '-D', '-', '-o', '/dev/null', $url)) {
+        warn("curl HEAD invocation failed for '$url': $!\n");
+        return;
+    }
     my @curlhead = <$curlfh>;
     my $curlok = close($curlfh);
-    return if (not $curlok) || (not @curlhead);
+    if (not $curlok) {
+        warn("curl HEAD command failed for '$url'\n");
+        return;
+    } elsif (not @curlhead) {
+        return;
+    }
 
     my $status = undef;
     my $statusline = undef;
@@ -70,12 +79,16 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
     }
 
     system('mkdir', '-p', $dir) == 0 or die("Failed to mkdir -p '$dir'");
+    my $contentdisposition = $response->{'content-disposition'};
+    warn(" - Attachment $i: missing Content-Disposition header\n") if not defined $contentdisposition;
     open(FH, '>', "$dir/content-disposition") or die("Failed to open '$dir/content-disposition': $!");
-    print FH $response->{'content-disposition'} // '';
+    print FH $contentdisposition // '';
     close(FH);
 
+    my $contenttype = $response->{'content-type'};
+    warn(" - Attachment $i: missing Content-Type header\n") if not defined $contenttype;
     open(FH, '>', "$dir/content-type") or die("Failed to open '$dir/content-type': $!");
-    print FH $response->{'content-type'} // '';
+    print FH $contenttype // '';
     close(FH);
 
     my $downloadtmp = "$dir/data-in-progress";
