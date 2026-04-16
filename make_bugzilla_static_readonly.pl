@@ -10,6 +10,8 @@
 
 use warnings;
 use strict;
+use File::Copy qw(move);
+use File::Path qw(make_path);
 
 # EDIT THESE LINES TO FIT YOUR BUGZILLA INSTALL!
 my $sitename = 'bugzilla.icculus.org';  # This can also be a real name like "The Icculus Bugtracker" or whatever.
@@ -20,12 +22,27 @@ my $bugzilla_attachments_url = 'https://bugzilla-attachments.icculus.org';  # th
 # EDIT THESE LINES TO FIT YOUR BUGZILLA INSTALL!
 
 
+my @curl_common_args = ('--fail', '--location', '--retry', '3', '--show-error', '--silent');
+
+sub curl_download {
+    my ($url, $output, $what) = @_;
+    system('curl', @curl_common_args, '-o', $output, $url) == 0 or die("curl failed on $what (exit code " . ($? >> 8) . "); see stderr for details");
+}
+
+sub curl_head_lines {
+    my ($url, $what) = @_;
+    open(my $curlheadfh, '-|', 'curl', @curl_common_args, '--head', $url) or die("HTTP HEAD failed on $what: $!");
+    my @lines = <$curlheadfh>;
+    close($curlheadfh) or die("HTTP HEAD failed on $what");
+    return @lines;
+}
+
 
 if ( ! -f "images/favicon.ico" ) {
-    system("mkdir -p 'images'") == 0 or die("Failed to mkdir -p 'images'");
+    make_path('images');
     print("Collecting favicon.ico...\n");
-    system("curl -o 'data-in-progress' '$bugzilla_url/images/favicon.ico'") == 0 or die("curl failed on favicon.ico!");
-    system("mv 'data-in-progress' 'images/favicon.ico'");
+    curl_download("$bugzilla_url/images/favicon.ico", 'data-in-progress', 'favicon.ico');
+    move('data-in-progress', 'images/favicon.ico') or die("Failed to move 'data-in-progress' to 'images/favicon.ico': $!");
 }
 print("favicon.ico is collected!\n\n");
 
@@ -35,9 +52,14 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
     my $dir = "$attachmentsdir/" . int($i / 1000) . '/' . int(($i % 1000) / 100) . '/' . $i;
     next if ( -f "$dir/data" );  # already done with this one.
     print(" - Collecting attachment $i ...\n");
-    my @curlhead = split /\r\n/, `curl -I -s -S "$bugzilla_attachments_url/attachment.cgi?id=$i"`;
+    my @curlhead = curl_head_lines("$bugzilla_attachments_url/attachment.cgi?id=$i", "attachment $i");
+    chomp for @curlhead;
+    s/\r\z// for @curlhead;
     die("HTTP HEAD failed on attachment $i") if not @curlhead;    
-    die("Unexpected HTTP response '{$curlhead[0]}' on attachment $i") if $curlhead[0] ne 'HTTP/1.1 200 OK';
+    my @httpstatus = grep { /\AHTTP\// } @curlhead;
+    die("No HTTP status line found on attachment $i") if not @httpstatus;
+    my $httpstatus = $httpstatus[-1];
+    die("Unexpected HTTP response: $httpstatus on attachment $i") if $httpstatus !~ /\AHTTP\/\S+\s+200\b/;
 
     my %response = ();
     foreach (@curlhead) {
@@ -46,11 +68,11 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
         }
     }
 
-    system("mkdir -p '$dir'") == 0 or die("Failed to mkdir -p '$dir'");
+    make_path($dir);
     open(FH, '>', "$dir/content-disposition") or die("Failed to open '$dir/content-disposition': $!"); print FH $response{'Content-disposition'}; close(FH);
     open(FH, '>', "$dir/content-type") or die("Failed to open '$dir/content-type': $!"); print FH $response{'Content-Type'}; close(FH);
-    system("curl -o 'data-in-progress' '$bugzilla_attachments_url/attachment.cgi?id=$i'") == 0 or die("curl failed on attachment $i!");
-    system("mv 'data-in-progress' '$dir/data'");
+    curl_download("$bugzilla_attachments_url/attachment.cgi?id=$i", 'data-in-progress', "attachment $i");
+    move('data-in-progress', "$dir/data") or die("Failed to move 'data-in-progress' to '$dir/data': $!");
 }
 print("Attachments are all collected!\n\n");
 
@@ -61,8 +83,8 @@ for (my $i = 1; $i <= $total_bugs; $i++) {
     next if ( -f "$origdir/$i" );  # already done with this one.
     print(" - Collecting bug $i ...\n");
     my $url = "$bugzilla_url/show_bug.cgi?id=$i";
-    system("curl -o 'data-in-progress' '$url'") == 0 or die("curl failed on bug $i!");
-    system("mv 'data-in-progress' '$origdir/$i'");
+    curl_download($url, 'data-in-progress', "bug $i");
+    move('data-in-progress', "$origdir/$i") or die("Failed to move 'data-in-progress' to '$origdir/$i': $!");
 }
 print("Bug reports are all collected!\n\n");
 
@@ -75,7 +97,7 @@ for (my $i = 1; $i <= $total_bugs; $i++) {
     #$dir = "$finaldir";
     next if ( -f "$dir/$i" );  # already done with this one.
     print(" - Generating static HTML for bug $i ...\n");
-    system("mkdir -p '$dir'") == 0 or die("Failed to mkdir -p '$dir'");
+    make_path($dir);
     open(FHORIGIN, '<', "$origdir/$i") or die("Failed to open '$dir/$i': $!");
     my $bugtitle = undef;
     my $bugcomments = undef;
@@ -325,10 +347,9 @@ for (my $i = 1; $i <= $total_bugs; $i++) {
     close(FHTEMPLATEIN);
     close(FHOUT);
 
-    system("mv 'data-in-progress' '$dir/$i'");
+    move('data-in-progress', "$dir/$i") or die("Failed to move 'data-in-progress' to '$dir/$i': $!");
 }
 
 print("Static HTML pages are all generated!\n\n");
 
 print("\n\n\nAll done!\n\n\n");
-
