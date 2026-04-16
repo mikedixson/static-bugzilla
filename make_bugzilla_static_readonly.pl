@@ -69,7 +69,7 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
         next;
     }
 
-    system("mkdir -p '$dir'") == 0 or die("Failed to mkdir -p '$dir'");
+    system('mkdir', '-p', $dir) == 0 or die("Failed to mkdir -p '$dir'");
     open(FH, '>', "$dir/content-disposition") or die("Failed to open '$dir/content-disposition': $!");
     print FH $response->{'content-disposition'} // '';
     close(FH);
@@ -84,7 +84,7 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
         warn(" - Skipping attachment $i: attachment download failed\n");
         next;
     }
-    system("mv '$downloadtmp' '$dir/data'");
+    system('mv', $downloadtmp, "$dir/data");
 }
 print("Attachments are all collected!\n\n");
 
