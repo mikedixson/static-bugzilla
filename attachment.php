@@ -30,14 +30,20 @@ function header_token_pattern() {
     return "[A-Za-z0-9!#$%&'*+.^_`|~-]+";
 }
 
+function header_quoted_string_pattern() {
+    return "\"(?:[^\"\\\\\\x00-\\x1F\\x7F]|\\\\[\\x20-\\x7E])*\"";
+}
+
 function is_valid_content_type($value) {
     $token = header_token_pattern();
-    return preg_match('/\A' . $token . '\/' . $token . '(?:\s*;\s*' . $token . '=(?:' . $token . '|"[^"]*"))*\z/', $value) === 1;
+    $quoted = header_quoted_string_pattern();
+    return preg_match('/\A' . $token . '\/' . $token . '(?:\s*;\s*' . $token . '=(?:' . $token . '|' . $quoted . '))*\z/', $value) === 1;
 }
 
 function is_valid_content_disposition($value) {
     $token = header_token_pattern();
-    return preg_match('/\A(?:inline|attachment)(?:\s*;\s*' . $token . '=(?:' . $token . '|"[^"]*"))*\z/i', $value) === 1;
+    $quoted = header_quoted_string_pattern();
+    return preg_match('/\A(?:inline|attachment)(?:\s*;\s*' . $token . '=(?:' . $token . '|' . $quoted . '))*\z/i', $value) === 1;
 }
 
 if (!isset($_REQUEST['id'])) {
