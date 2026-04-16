@@ -59,7 +59,7 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
     my @httpstatus = grep { /\AHTTP\// } @curlhead;
     die("No HTTP status line found on attachment $i") if not @httpstatus;
     my $httpstatus = $httpstatus[-1];
-    die("Unexpected HTTP response '{$httpstatus}' on attachment $i") if $httpstatus !~ /\AHTTP\/\S+\s+200\b/;
+    die("Unexpected HTTP response: $httpstatus on attachment $i") if $httpstatus !~ /\AHTTP\/\S+\s+200\b/;
 
     my %response = ();
     foreach (@curlhead) {
