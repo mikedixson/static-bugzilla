@@ -27,7 +27,7 @@ function sanitize_header_value($value) {
 }
 
 function header_token_pattern() {
-    return "[A-Za-z0-9!#$%&'*+.^_`|~-]+";
+    return "[A-Za-z0-9!#$%&'*+.^_|~-]+";
 }
 
 function header_quoted_string_pattern() {
