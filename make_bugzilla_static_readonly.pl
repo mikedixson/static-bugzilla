@@ -26,7 +26,7 @@ my @curl_common_args = ('--fail', '--location', '--retry', '3', '--show-error', 
 
 sub curl_download {
     my ($url, $output, $what) = @_;
-    system('curl', @curl_common_args, '-o', $output, $url) == 0 or die("curl failed on $what (exit code " . ($? >> 8) . ")!");
+    system('curl', @curl_common_args, '-o', $output, $url) == 0 or die("curl failed on $what (exit code " . ($? >> 8) . "); see stderr for details");
 }
 
 sub curl_head_lines {
@@ -53,10 +53,12 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
     next if ( -f "$dir/data" );  # already done with this one.
     print(" - Collecting attachment $i ...\n");
     my @curlhead = curl_head_lines("$bugzilla_attachments_url/attachment.cgi?id=$i", "attachment $i");
-    s/\r?\n?\z// for @curlhead;
+    chomp for @curlhead;
+    s/\r\z// for @curlhead;
     die("HTTP HEAD failed on attachment $i") if not @curlhead;    
     my @httpstatus = grep { /\AHTTP\// } @curlhead;
-    my $httpstatus = @httpstatus ? $httpstatus[-1] : '(no status line)';
+    die("No HTTP status line found on attachment $i") if not @httpstatus;
+    my $httpstatus = $httpstatus[-1];
     die("Unexpected HTTP response '{$httpstatus}' on attachment $i") if $httpstatus !~ /\AHTTP\/\S+\s+200\b/;
 
     my %response = ();
