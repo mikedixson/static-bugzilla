@@ -14,17 +14,9 @@
     Require all denied
 </Files>
 
-<Files attachments>
+<If "%{REQUEST_URI} =~ m#^/(attachments|bugs-html|original-bugs-html)(?:/|$)#">
     Require all denied
-</Files>
-
-<Files bugs_html>
-    Require all denied
-</Files>
-
-<Files original_bugs_html>
-    Require all denied
-</Files>
+</If>
 
 <Files LICENSE.txt>
     Require all denied
@@ -41,4 +33,3 @@
 <Files template.html>
     Require all denied
 </Files>
-
