@@ -14,7 +14,7 @@
     Require all denied
 </Files>
 
-<If "%{REQUEST_URI} =~ m#(?:^|/)(attachments|bugs-html|original-bugs-html)(?:/|$)#">
+<If "%{REQUEST_URI} =~ m#^/(attachments|bugs-html|original-bugs-html)(?:/|$)#">
     Require all denied
 </If>
 
