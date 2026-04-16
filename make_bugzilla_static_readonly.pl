@@ -19,6 +19,28 @@ my $bugzilla_url = 'https://bugzilla.icculus.org';  # the base URL for the bugtr
 my $bugzilla_attachments_url = 'https://bugzilla-attachments.icculus.org';  # the base URL for the bugtracker's attachments, which might be different. Click an attachment and see where it takes you if you don't know.
 # EDIT THESE LINES TO FIT YOUR BUGZILLA INSTALL!
 
+sub attachment_head_response {
+    my ($url) = @_;
+    my @curlhead = split /\n/, `curl -I -L -s -S -D - -o /dev/null "$url"`;
+    return if ($? != 0) || (not @curlhead);
+
+    my $status = undef;
+    my $statusline = undef;
+    my %response = ();
+
+    foreach (@curlhead) {
+        s/\r?\n\Z//;
+        if (/\AHTTP\/\S+\s+(\d{3})(?:\s|\Z)/) {
+            $status = int($1);
+            $statusline = $_;
+            %response = ();  # this starts a new response block after redirects.
+        } elsif (/\A(.*?)\:\s+(.*)\Z/) {
+            $response{lc($1)} = $2;
+        }
+    }
+
+    return ($status, $statusline, \%response);
+}
 
 
 if ( ! -f "images/favicon.ico" ) {
@@ -35,21 +57,23 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
     my $dir = "$attachmentsdir/" . int($i / 1000) . '/' . int(($i % 1000) / 100) . '/' . $i;
     next if ( -f "$dir/data" );  # already done with this one.
     print(" - Collecting attachment $i ...\n");
-    my @curlhead = split /\r\n/, `curl -I -s -S "$bugzilla_attachments_url/attachment.cgi?id=$i"`;
-    die("HTTP HEAD failed on attachment $i") if not @curlhead;    
-    die("Unexpected HTTP response '{$curlhead[0]}' on attachment $i") if $curlhead[0] ne 'HTTP/1.1 200 OK';
-
-    my %response = ();
-    foreach (@curlhead) {
-        if (/\A(.*?)\:\s+(.*)\Z/) {
-            $response{$1} = $2;
-        }
+    my $url = "$bugzilla_attachments_url/attachment.cgi?id=$i";
+    my ($status, $statusline, $response) = attachment_head_response($url);
+    if (not defined $status) {
+        warn(" - Skipping attachment $i: HTTP HEAD failed\n");
+        next;
+    } elsif (($status < 200) || ($status >= 300)) {
+        warn(" - Skipping attachment $i: non-success HTTP status $status ($statusline)\n");
+        next;
     }
 
     system("mkdir -p '$dir'") == 0 or die("Failed to mkdir -p '$dir'");
-    open(FH, '>', "$dir/content-disposition") or die("Failed to open '$dir/content-disposition': $!"); print FH $response{'Content-disposition'}; close(FH);
-    open(FH, '>', "$dir/content-type") or die("Failed to open '$dir/content-type': $!"); print FH $response{'Content-Type'}; close(FH);
-    system("curl -o 'data-in-progress' '$bugzilla_attachments_url/attachment.cgi?id=$i'") == 0 or die("curl failed on attachment $i!");
+    open(FH, '>', "$dir/content-disposition") or die("Failed to open '$dir/content-disposition': $!"); print FH $response->{'content-disposition'} // ''; close(FH);
+    open(FH, '>', "$dir/content-type") or die("Failed to open '$dir/content-type': $!"); print FH $response->{'content-type'} // ''; close(FH);
+    if (system("curl -f -L -s -S -o 'data-in-progress' '$url'") != 0) {
+        warn(" - Skipping attachment $i: attachment download failed\n");
+        next;
+    }
     system("mv 'data-in-progress' '$dir/data'");
 }
 print("Attachments are all collected!\n\n");
@@ -331,4 +355,3 @@ for (my $i = 1; $i <= $total_bugs; $i++) {
 print("Static HTML pages are all generated!\n\n");
 
 print("\n\n\nAll done!\n\n\n");
-

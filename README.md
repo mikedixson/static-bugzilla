@@ -38,6 +38,9 @@ their original URLs; everything else goes to a 404 page.
   is interrupted, it will pick up where it left off next time. It doesn't
   move files into place until they are ready, so a power outage shouldn't
   leave data half-prepared.
+- Attachment preflight follows redirects and treats any final `2xx` status as
+  success. Non-success statuses (like 403/404) are logged with the attachment
+  ID and that attachment is skipped so the overall run can continue.
 - Downloading may take significant time. Running this script _directly on the
   webserver itself_ (so no bandwidth delays) still took about four hours to
   download 6678 bugs and 3639 attachments, as each HTTP request to Bugzilla
@@ -137,4 +140,3 @@ we can talk it through.
 ## Thanks!
 
 --ryan.
-
