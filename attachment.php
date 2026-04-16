@@ -7,6 +7,35 @@ function notfound() {
     exit(0);
 }
 
+function sanitize_header_value($value) {
+    if (!is_string($value)) {
+        return false;
+    }
+
+    $value = str_replace(array("\r", "\n"), '', $value);
+    $value = trim($value);
+
+    if ($value === '') {
+        return false;
+    }
+
+    if (preg_match('/[\x00-\x1F\x7F]/', $value)) {
+        return false;
+    }
+
+    return $value;
+}
+
+function is_valid_content_type($value) {
+    $token = "[A-Za-z0-9!#$%&'*+.^_`|~-]+";
+    return preg_match('/\A' . $token . '\/' . $token . '(?:\s*;\s*' . $token . '=(?:' . $token . '|"[^"]*"))*\z/', $value) === 1;
+}
+
+function is_valid_content_disposition($value) {
+    $token = "[A-Za-z0-9!#$%&'*+.^_`|~-]+";
+    return preg_match('/\A(?:inline|attachment)(?:\s*;\s*' . $token . '=(?:' . $token . '|"[^"]*"))*\z/i', $value) === 1;
+}
+
 if (!isset($_REQUEST['id'])) {
     notfound();
 }
@@ -30,13 +59,19 @@ if (file_exists("$path/content-type")) {
     $content_type = file_get_contents("$path/content-type");
 }
 
-if ($content_disposition !== false) {
-    header("Content-disposition: $content_disposition");
+$content_disposition = sanitize_header_value($content_disposition);
+if (($content_disposition === false) || (!is_valid_content_disposition($content_disposition))) {
+    $content_disposition = 'attachment';
 }
 
-if ($content_type !== false) {
-    header("Content-Type: $content_type");
+$content_type = sanitize_header_value($content_type);
+if (($content_type === false) || (!is_valid_content_type($content_type))) {
+    $content_type = 'application/octet-stream';
 }
+
+header('X-Content-Type-Options: nosniff');
+header("Content-Disposition: $content_disposition");
+header("Content-Type: $content_type");
 
 $flen = filesize("$path/data");
 if ($flen !== false) {
@@ -50,4 +85,3 @@ if (@readfile("$path/data") === false) {
 exit(0);
 
 ?>
-

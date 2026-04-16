@@ -106,6 +106,17 @@ Once you're happy with everything:
   here, in case you want to tweak the template or fix a script bug and rebuild
   the static pages, etc.
 
+## Verifying attachment header hardening
+
+You can quickly verify attachment responses with curl:
+
+- Valid metadata should pass through:
+  - `curl -sSI 'https://your-bugzilla.example.com/attachment.cgi?id=1234'`
+- Invalid or missing metadata should not inject/split headers and should fall back safely:
+  - `Content-Type` falls back to `application/octet-stream`
+  - `Content-Disposition` falls back to `attachment`
+  - Response includes `X-Content-Type-Options: nosniff`
+
 
 ## I have bugs that are just spam that bots posted.
 
@@ -137,4 +148,3 @@ we can talk it through.
 ## Thanks!
 
 --ryan.
-
