@@ -22,7 +22,7 @@ my $bugzilla_attachments_url = 'https://bugzilla-attachments.icculus.org';  # th
 sub attachment_head_response {
     my ($url) = @_;
     my $curlfh;
-    if (not open($curlfh, '-|', 'curl', '-I', '-L', '-s', '-S', '-o', '/dev/null', $url)) {
+    if (not open($curlfh, '-|', 'curl', '-I', '-L', '-s', '-S', $url)) {
         warn("curl HEAD invocation failed for '$url': $!\n");
         return;
     }
@@ -93,9 +93,11 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
     close(FH);
 
     my $downloadtmp = "$dir/data-in-progress";
-    if (system('curl', '-f', '-L', '-s', '-S', '-o', $downloadtmp, $url) != 0) {
+    my $curlresult = system('curl', '-f', '-L', '-s', '-S', '-o', $downloadtmp, $url);
+    if ($curlresult != 0) {
+        my $curlstatus = $curlresult >> 8;
         unlink($downloadtmp) if -f $downloadtmp;
-        warn(" - Skipping attachment $i: attachment download failed\n");
+        warn(" - Skipping attachment $i: attachment download failed (curl exit code $curlstatus)\n");
         next;
     }
     system('mv', $downloadtmp, "$dir/data") == 0 or die("Failed to move '$downloadtmp' to '$dir/data'");
