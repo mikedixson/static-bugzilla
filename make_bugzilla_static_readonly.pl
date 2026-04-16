@@ -32,6 +32,7 @@ sub attachment_head_response {
         warn("curl HEAD command failed for '$url'\n");
         return;
     } elsif (not @curlhead) {
+        warn("curl HEAD returned no output for '$url'\n");
         return;
     }
 
@@ -97,7 +98,7 @@ for (my $i = 1; $i <= $total_attachments; $i++) {
         warn(" - Skipping attachment $i: attachment download failed\n");
         next;
     }
-    system('mv', $downloadtmp, "$dir/data");
+    system('mv', $downloadtmp, "$dir/data") == 0 or die("Failed to move '$downloadtmp' to '$dir/data'");
 }
 print("Attachments are all collected!\n\n");
 
